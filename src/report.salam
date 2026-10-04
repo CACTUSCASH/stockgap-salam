@@ -1,0 +1,23 @@
+package report
+
+include planner "planner.salam"
+include totals "totals.salam"
+
+pub func Print(orders: Vector<planner.Order>, summary: totals.Summary, review_days: i64, budget: i64):
+    println "STOCKGAP\t0.1.0"
+    println "REVIEW_DAYS\t" + review_days
+    println "ITEM_HEADER\tsku\tsupplier\tavailable\ttarget\tshortage\torder_qty\tcost_cents\tarrival_gap"
+    each order in orders:
+        println "ITEM\t" + order.stock.sku + "\t" + order.stock.supplier + "\t" + order.available + "\t" +
+            order.target + "\t" + order.shortage + "\t" + order.quantity + "\t" + order.cost_cents + "\t" + order.arrival_gap
+    end
+    println "SUPPLIER_HEADER\tsupplier\tunits\tcost_cents"
+    each supplier in summary.suppliers:
+        println "SUPPLIER\t" + supplier.id + "\t" + supplier.units + "\t" + supplier.cents
+    end
+    println "ORDERED_SKUS\t" + summary.ordered_skus
+    println "ARRIVAL_GAP_SKUS\t" + summary.arrival_gap_skus
+    println "TOTAL_CENTS\t" + summary.cents
+    println "BUDGET_CENTS\t" + budget
+    println "BUDGET_STATUS\t" + (summary.cents > budget ? "OVER" : "WITHIN")
+end

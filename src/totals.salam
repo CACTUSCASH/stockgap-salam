@@ -1,0 +1,47 @@
+package totals
+
+include planner "planner.salam"
+
+pub struct Supplier:
+    pub id: str = ""
+    pub units: i64 = 0
+    pub cents: i64 = 0
+end
+
+pub struct Summary:
+    pub suppliers: Vector<Supplier> = Vector {}
+    pub cents: i64 = 0
+    pub ordered_skus: int = 0
+    pub arrival_gap_skus: int = 0
+end
+
+pub func Collect(orders: Vector<planner.Order>): Summary:
+    mut suppliers := Vector {} as Vector<Supplier>
+    mut index := HashMap {} as HashMap<str, int>
+    defer index.free()
+    mut cents := 0 as i64
+    mut ordered_skus := 0
+    mut arrival_gap_skus := 0
+    each order in orders:
+        cents += order.cost_cents
+        if order.arrival_gap > 0:
+            arrival_gap_skus += 1
+        end
+        if order.quantity == 0:
+            continue
+        end
+        ordered_skus += 1
+        id := order.stock.supplier
+        if not index.has(id):
+            index.put(id, suppliers.len())
+            suppliers.push(Supplier {id = id})
+        end
+        i := index.get(id)
+        mut supplier := suppliers.get(i)
+        supplier.units += order.quantity
+        supplier.cents += order.cost_cents
+        suppliers.set(i, supplier)
+    end
+    ret Summary {suppliers = suppliers, cents = cents, ordered_skus = ordered_skus,
+        arrival_gap_skus = arrival_gap_skus}
+end

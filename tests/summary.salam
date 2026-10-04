@@ -1,0 +1,31 @@
+package main
+
+import testing
+
+include item "../src/item.salam"
+include planner "../src/planner.salam"
+include totals "../src/totals.salam"
+include report "../src/report.salam"
+
+func main:
+    mut orders := Vector {} as Vector<planner.Order>
+    defer orders.free()
+    orders.push(planner.Plan(item.Stock {sku = "A", supplier = "S1", daily_demand = 1, pack_size = 1, unit_cost_cents = 125}, 2))
+    orders.push(planner.Plan(item.Stock {sku = "B", supplier = "S2", daily_demand = 2, pack_size = 3, unit_cost_cents = 50}, 2))
+    orders.push(planner.Plan(item.Stock {sku = "C", supplier = "S1", daily_demand = 1, pack_size = 3, unit_cost_cents = 25}, 2))
+    summary := totals.Collect(orders)
+    defer summary.suppliers.free()
+    testing.AssertTrue(summary.cents == 625)
+    testing.AssertEqInt(summary.ordered_skus, 3)
+    testing.AssertEqInt(summary.suppliers.len(), 2)
+    testing.AssertEqStr(summary.suppliers.get(0).id, "S1")
+    testing.AssertTrue(summary.suppliers.get(0).cents == 325)
+    testing.AssertTrue(summary.suppliers.get(1).cents == 300)
+    mut conserved := 0 as i64
+    each supplier in summary.suppliers:
+        conserved += supplier.cents
+    end
+    testing.AssertTrue(conserved == summary.cents)
+    report.Print(orders, summary, 2, 624)
+    ret testing.Summary()
+end
