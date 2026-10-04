@@ -1,11 +1,11 @@
 package inventory
 
-import os
 import str
 import mem
 
 include item "item.salam"
 include number "number.salam"
+include inputfile "inputfile.salam"
 
 const HEADER := "sku\tsupplier\ton_hand\treserved\tdaily_demand\tlead_days\tsafety_days\tpack_size\tmin_order\tunit_cost_cents"
 const MAXBYTES := 512000
@@ -70,14 +70,14 @@ func ParseRow(line: str, line_number: int): Row:
 end
 
 pub func Load(path: str): Loaded:
-    f := os.Open(path, "rb")
+    f := inputfile.Open(path)
     if f == null:
         ret Loaded {error = "cannot open inventory file"}
     end
     defer f.close()
-    size := os.FileSize(path)
-    if size <= 0 or size > MAXBYTES or os.IsDir(path):
-        ret Loaded {error = "inventory must be a nonempty regular file, at most 512000 bytes"}
+    size := inputfile.Size(f)
+    if size <= 0 or size > MAXBYTES:
+        ret Loaded {error = "inventory must be a nonempty seekable file, at most 512000 bytes"}
     end
     raw := f.read(MAXBYTES + 1)
     defer mem.Free(raw as void*)

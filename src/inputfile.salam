@@ -1,0 +1,45 @@
+package inputfile
+
+// Nonblocking open prevents a named pipe from waiting for a writer. The caller
+// requires a seekable, nonempty file before reading. Supported: macOS and Linux.
+extern:
+    func openat(directory: i32, path: str, flags: i32): i32
+    func fdopen(fd: int, mode: str): void*
+    func close(fd: int): int
+    func ftell(fp: void*): i64
+end
+
+pub func Open(path: str): File*:
+    mut flags := 0
+    mut directory := 0
+    if SALAM_OS_MAC:
+        flags = 4 // O_RDONLY | O_NONBLOCK on Darwin
+        directory = 0 - 2 // AT_FDCWD
+    else SALAM_OS_LINUX and (SALAM_ARCH_X64 or SALAM_ARCH_ARM64):
+        flags = 2048 // O_RDONLY | O_NONBLOCK on Linux
+        directory = 0 - 100 // AT_FDCWD
+    else:
+        ret null
+    end
+    fd := openat(directory, path, flags)
+    if fd < 0:
+        ret null
+    end
+    fp := fdopen(fd, "rb")
+    if fp == null:
+        close(fd)
+        ret null
+    end
+    ret fp as File*
+end
+
+pub func Size(f: File*): i64:
+    if f.seek(0, 2) != 0:
+        ret 0 - 1
+    end
+    size := ftell(f as void*)
+    if f.seek(0, 0) != 0:
+        ret 0 - 1
+    end
+    ret size
+end

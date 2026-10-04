@@ -1,5 +1,11 @@
 import os
 
+include number "number.salam"
+include inventory "inventory.salam"
+include planner "planner.salam"
+include totals "totals.salam"
+include report "report.salam"
+
 func main:
     a := os.Args()
     defer a.free()
@@ -7,11 +13,36 @@ func main:
         println "StockGap 0.1.0"
         ret 0
     end
-    println "StockGap: offline inventory reorder planner"
-    println "Usage: stockgap INVENTORY.tsv REVIEW_DAYS BUDGET_CENTS"
-    println "Development build: inventory planning is being implemented."
     if a.len() == 2 and a.get(1) == "--help":
+        println "StockGap: offline inventory reorder planner"
+        println "Usage: stockgap INVENTORY.tsv REVIEW_DAYS BUDGET_CENTS"
+        println "REVIEW_DAYS: 0-365. BUDGET_CENTS: 0-1000000000000000. All integers are ASCII decimal."
+        println "Exit codes: 0 within budget; 1 over budget; 2 invalid input. No orders are placed."
         ret 0
     end
-    ret 2
+    if a.len() != 4:
+        printerrln "Usage: stockgap INVENTORY.tsv REVIEW_DAYS BUDGET_CENTS"
+        ret 2
+    end
+    review := number.Parse(a.get(2), 365)
+    budget := number.Parse(a.get(3), 1000000000000000)
+    if not review.ok or not budget.ok:
+        printerrln "invalid REVIEW_DAYS or BUDGET_CENTS; see --help"
+        ret 2
+    end
+    loaded := inventory.Load(a.get(1))
+    defer loaded.rows.free()
+    if loaded.error != "":
+        printerrln loaded.error
+        ret 2
+    end
+    mut orders := Vector {} as Vector<planner.Order>
+    defer orders.free()
+    each stock in loaded.rows:
+        orders.push(planner.Plan(stock, review.value))
+    end
+    summary := totals.Collect(orders)
+    defer summary.suppliers.free()
+    report.Print(orders, summary, review.value, budget.value)
+    ret summary.cents > budget.value ? 1 : 0
 end
