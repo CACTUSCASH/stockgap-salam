@@ -1,0 +1,5 @@
+build/
+.salam-build/
+*.c
+*.o
+.DS_Store

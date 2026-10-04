@@ -1,0 +1,17 @@
+import os
+
+func main:
+    a := os.Args()
+    defer a.free()
+    if a.len() == 2 and a.get(1) == "--version":
+        println "StockGap 0.1.0"
+        ret 0
+    end
+    println "StockGap: offline inventory reorder planner"
+    println "Usage: stockgap INVENTORY.tsv REVIEW_DAYS BUDGET_CENTS"
+    println "Development build: inventory planning is being implemented."
+    if a.len() == 2 and a.get(1) == "--help":
+        ret 0
+    end
+    ret 2
+end
