@@ -1,0 +1,32 @@
+import testing
+
+include item "../src/item.salam"
+include planner "../src/planner.salam"
+
+func main:
+    stock := item.Stock {sku = "TEA", supplier = "S1", on_hand = 12, reserved = 2,
+        daily_demand = 4, lead_days = 3, safety_days = 2, pack_size = 6, min_order = 0, unit_cost_cents = 125}
+    p := planner.Plan(stock, 2)
+    testing.AssertTrue(p.available == 10)
+    testing.AssertTrue(p.target == 28)
+    testing.AssertTrue(p.shortage == 18)
+    testing.AssertTrue(p.quantity == 18)
+    testing.AssertTrue(p.cost_cents == 2250)
+    testing.AssertTrue(p.arrival_gap == 2)
+    rounded := planner.Plan(item.Stock {daily_demand = 1, pack_size = 6, min_order = 8, unit_cost_cents = 50}, 1)
+    testing.AssertTrue(rounded.quantity == 12)
+    testing.AssertTrue(rounded.cost_cents == 600)
+    full := planner.Plan(item.Stock {on_hand = 100, daily_demand = 1, lead_days = 1, pack_size = 6, min_order = 50}, 1)
+    testing.AssertTrue(full.quantity == 0)
+    testing.AssertTrue(full.arrival_gap == 0)
+    dormant := planner.Plan(item.Stock {pack_size = 1, min_order = 100}, 30)
+    testing.AssertTrue(dormant.quantity == 0)
+    // Across a range of needs, the result covers the need and fits a case pack.
+    repeat 120 in demand:
+        r := planner.Plan(item.Stock {daily_demand = demand as i64, pack_size = 7}, 3)
+        testing.AssertTrue(r.quantity >= r.shortage)
+        testing.AssertTrue(r.quantity % (7 as i64) == 0)
+        testing.AssertTrue(r.quantity - r.shortage < 7)
+    end
+    ret testing.Summary()
+end

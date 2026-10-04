@@ -1,0 +1,14 @@
+package item
+
+pub struct Stock:
+    pub sku: str = ""
+    pub supplier: str = ""
+    pub on_hand: i64 = 0
+    pub reserved: i64 = 0
+    pub daily_demand: i64 = 0
+    pub lead_days: i64 = 0
+    pub safety_days: i64 = 0
+    pub pack_size: i64 = 1
+    pub min_order: i64 = 0
+    pub unit_cost_cents: i64 = 0
+end

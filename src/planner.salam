@@ -1,0 +1,34 @@
+package planner
+
+include item "item.salam"
+
+pub struct Order:
+    pub stock: item.Stock = item.Stock {}
+    pub available: i64 = 0
+    pub target: i64 = 0
+    pub shortage: i64 = 0
+    pub quantity: i64 = 0
+    pub cost_cents: i64 = 0
+    pub arrival_gap: i64 = 0
+end
+
+// Demand is constant over the planning horizon; no purchase is placed.
+pub func Plan(stock: item.Stock, review_days: i64): Order:
+    available := stock.on_hand - stock.reserved
+    target := stock.daily_demand * (stock.lead_days + stock.safety_days + review_days)
+    mut shortage := target - available
+    if shortage < 0:
+        shortage = 0
+    end
+    mut quantity := 0 as i64
+    if shortage > 0:
+        base := shortage > stock.min_order ? shortage : stock.min_order
+        quantity = ((base + stock.pack_size - (1 as i64)) / stock.pack_size) * stock.pack_size
+    end
+    mut arrival_gap := stock.daily_demand * stock.lead_days - available
+    if arrival_gap < 0:
+        arrival_gap = 0
+    end
+    ret Order {stock = stock, available = available, target = target, shortage = shortage,
+        quantity = quantity, cost_cents = quantity * stock.unit_cost_cents, arrival_gap = arrival_gap}
+end
