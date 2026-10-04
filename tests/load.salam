@@ -1,0 +1,15 @@
+import testing
+
+include inventory "../src/inventory.salam"
+
+func main:
+    loaded := inventory.Load("examples/stock.tsv")
+    defer loaded.rows.free()
+    testing.AssertEqStr(loaded.error, "")
+    testing.AssertEqInt(loaded.rows.len(), 4)
+    testing.AssertEqStr(loaded.rows.get(0).sku, "TEA-01")
+    missing := inventory.Load("examples/does-not-exist.tsv")
+    defer missing.rows.free()
+    testing.AssertTrue(missing.error != "")
+    ret testing.Summary()
+end

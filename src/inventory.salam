@@ -1,0 +1,119 @@
+package inventory
+
+import os
+import str
+import mem
+
+include item "item.salam"
+include number "number.salam"
+
+const HEADER := "sku\tsupplier\ton_hand\treserved\tdaily_demand\tlead_days\tsafety_days\tpack_size\tmin_order\tunit_cost_cents"
+const MAXBYTES := 512000
+
+pub struct Loaded:
+    pub rows: Vector<item.Stock> = Vector {}
+    pub error: str = ""
+end
+
+struct Row:
+    pub stock: item.Stock = item.Stock {}
+    pub error: str = ""
+end
+
+func Label(text: str): bool:
+    if text.len() == 0 or text.len() > 64:
+        ret false
+    end
+    alphabet := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    if str.Find(alphabet, str.Substr(text, 0, 1)) < 0:
+        ret false
+    end
+    repeat text.len() in i:
+        if str.Find(alphabet + "._-", str.Substr(text, i, 1)) < 0:
+            ret false
+        end
+    end
+    ret true
+end
+
+func ParseRow(line: str, line_number: int): Row:
+    fields := str.Split(line, "\t")
+    defer fields.free()
+    prefix := "line " + line_number + ": "
+    if fields.len() != 10:
+        ret Row {error = prefix + "expected 10 tab-separated fields"}
+    end
+    if not Label(fields.get(0)) or not Label(fields.get(1)):
+        ret Row {error = prefix + "sku and supplier must be ASCII identifiers (1-64 characters)"}
+    end
+    limits := [1000000000 as i64, 1000000000 as i64, 1000000 as i64, 365 as i64,
+        365 as i64, 1000000 as i64, 1000000 as i64, 1000000 as i64]
+    mut values := Vector {} as Vector<i64>
+    defer values.free()
+    repeat 8 in i:
+        parsed := number.Parse(fields.get(i + 2), limits[i])
+        if not parsed.ok:
+            ret Row {error = prefix + "invalid or out-of-range integer in column " + (i + 3)}
+        end
+        values.push(parsed.value)
+    end
+    if values.get(1) > values.get(0):
+        ret Row {error = prefix + "reserved stock exceeds on_hand"}
+    end
+    if values.get(5) == 0:
+        ret Row {error = prefix + "pack_size must be positive"}
+    end
+    ret Row {stock = item.Stock {sku = fields.get(0), supplier = fields.get(1),
+        on_hand = values.get(0), reserved = values.get(1), daily_demand = values.get(2),
+        lead_days = values.get(3), safety_days = values.get(4), pack_size = values.get(5),
+        min_order = values.get(6), unit_cost_cents = values.get(7)}}
+end
+
+pub func Load(path: str): Loaded:
+    f := os.Open(path, "rb")
+    if f == null:
+        ret Loaded {error = "cannot open inventory file"}
+    end
+    defer f.close()
+    size := os.FileSize(path)
+    if size <= 0 or size > MAXBYTES or os.IsDir(path):
+        ret Loaded {error = "inventory must be a nonempty regular file, at most 512000 bytes"}
+    end
+    raw := f.read(MAXBYTES + 1)
+    defer mem.Free(raw as void*)
+    // C strings stop at NUL. Comparing actual size catches truncation and changes.
+    if raw.len() != size:
+        ret Loaded {error = "inventory contains NUL bytes, changed while reading, or could not be fully read"}
+    end
+    normalized := str.Replace(raw, "\r\n", "\n")
+    if str.Contains(normalized, "\r"):
+        ret Loaded {error = "use LF or CRLF line endings"}
+    end
+    lines := str.Split(normalized, "\n")
+    defer lines.free()
+    if lines.get(0) != HEADER:
+        ret Loaded {error = "inventory header does not match the documented TSV schema"}
+    end
+    mut count := lines.len() - 1
+    if lines.get(lines.len() - 1) == "":
+        count -= 1
+    end
+    if count < 1 or count > 1000:
+        ret Loaded {error = "inventory must contain 1-1000 data rows"}
+    end
+    mut rows := Vector {} as Vector<item.Stock>
+    mut seen := HashMap {} as HashMap<str, bool>
+    defer seen.free()
+    repeat count in i:
+        row := ParseRow(lines.get(i + 1), i + 2)
+        if row.error != "":
+            ret Loaded {rows = rows, error = row.error}
+        end
+        if seen.has(row.stock.sku):
+            ret Loaded {rows = rows, error = "line " + (i + 2) + ": duplicate sku " + row.stock.sku}
+        end
+        seen.put(row.stock.sku, true)
+        rows.push(row.stock)
+    end
+    ret Loaded {rows = rows}
+end

@@ -1,0 +1,5 @@
+sku	supplier	on_hand	reserved	daily_demand	lead_days	safety_days	pack_size	min_order	unit_cost_cents
+TEA-01	PANTRY	12	2	4	3	2	6	0	125
+SOAP-02	CLEAN	0	0	1	2	1	12	25	250
+RICE-03	PANTRY	100	0	2	2	1	10	50	399
+OLD-04	CLEAN	0	0	0	30	30	6	100	75
