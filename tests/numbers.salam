@@ -1,0 +1,17 @@
+import testing
+
+include number "../src/number.salam"
+
+func main:
+    zero := number.Parse("0", 1000)
+    testing.AssertTrue(zero.ok)
+    testing.AssertTrue(zero.value == 0)
+    boundary := number.Parse("1000000000", 1000000000)
+    testing.AssertTrue(boundary.ok)
+    testing.AssertTrue(boundary.value == 1000000000)
+    each text in ["", "-1", "+1", "1.0", "2x", " 2", "2 ", "1e3", "١", "1000000001", "99999999999999999"]:
+        testing.AssertFalse(number.Parse(text, 1000000000).ok)
+    end
+    testing.AssertFalse(number.Parse("1", 0).ok)
+    ret testing.Summary()
+end

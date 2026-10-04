@@ -1,0 +1,30 @@
+package number
+
+import str
+
+pub struct Parsed:
+    pub ok: bool = false
+    pub value: i64 = 0
+end
+
+// Strict, bounded ASCII decimal parsing: no signs, decimals or numeric prefixes.
+pub func Parse(text: str, maximum: i64): Parsed:
+    if text.len() == 0 or text.len() > 16:
+        ret Parsed {}
+    end
+    mut value := 0 as i64
+    repeat text.len() in i:
+        digit := str.Find("0123456789", str.Substr(text, i, 1))
+        if digit < 0:
+            ret Parsed {}
+        end
+        if value > (maximum - digit as i64) / (10 as i64):
+            ret Parsed {}
+        end
+        value = value * (10 as i64) + digit as i64
+    end
+    if value > maximum:
+        ret Parsed {}
+    end
+    ret Parsed {ok = true, value = value}
+end
